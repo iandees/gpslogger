@@ -19,12 +19,12 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 
     private static final String TAG = LocationService.class.getSimpleName();
     private static final int CONNECTION_FAILURE_RESOLUTION_REQUEST = 5000;
+    public static final String EXTRA_LAT = "LAT";
+    public static final String EXTRA_LON = "LON";
+    public static final String INTENT_LOCATION = "com.yellowbkpk.location_update";
 
     private LocationRequest mLocationRequest;
     private GoogleApiClient mGoogleApiClient;
-
-    public LocationService() {
-    }
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -33,25 +33,40 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.e(TAG, "onStartCommand");
+        Log.i(TAG, "onStartCommand");
         super.onStartCommand(intent, flags, startId);
         return START_STICKY;
     }
 
     @Override
+    public void onDestroy() {
+        Log.i(TAG, "onDestroy");
+        super.onDestroy();
+        stopLocationUpdates();
+    }
+
+    @Override
     public void onCreate() {
+        Log.i(TAG, "onCreate");
         super.onCreate();
 
         buildGoogleApiClient();
+        mGoogleApiClient.connect();
         createLocationRequest();
     }
 
     protected void startLocationUpdates() {
-        LocationServices.FusedLocationApi.requestLocationUpdates(
-                mGoogleApiClient, mLocationRequest, this);
+        if (mGoogleApiClient.isConnected() && mLocationRequest != null) {
+            Log.i(TAG, "Requesting location updates");
+            LocationServices.FusedLocationApi.requestLocationUpdates(
+                    mGoogleApiClient, mLocationRequest, this);
+        } else {
+            Log.i(TAG, "No client connected or location request not built yet");
+        }
     }
 
     protected void stopLocationUpdates() {
+        Log.i(TAG, "Stopping location updates");
         LocationServices.FusedLocationApi.removeLocationUpdates(
                 mGoogleApiClient, this);
     }
@@ -74,50 +89,30 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 
     @Override
     public void onConnected(Bundle bundle) {
-        Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        if (location == null) {
-            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-        } else {
-            handleNewLocation(location);
-        }
+        Log.i(TAG, "Connected to Google Play Services");
+        startLocationUpdates();
     }
 
     @Override
     public void onConnectionSuspended(int i) {
-
+        Log.w(TAG, "Connection to Google Play Services suspended");
     }
 
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
-        /*
-         * Google Play services can resolve some errors it detects.
-         * If the error has a resolution, try sending an Intent to
-         * start a Google Play services activity that can resolve
-         * error.
-         */
-        if (connectionResult.hasResolution()) {
-            try {
-                // Start an Activity that tries to resolve the error
-                connectionResult.startResolutionForResult(this, CONNECTION_FAILURE_RESOLUTION_REQUEST);
-                /*
-                 * Thrown if Google Play services canceled the original
-                 * PendingIntent
-                 */
-            } catch (IntentSender.SendIntentException e) {
-                // Log the error
-                e.printStackTrace();
-            }
-        } else {
-            /*
-             * If no resolution is available, display a dialog to the
-             * user with the error.
-             */
-            Log.i(TAG, "Location services connection failed with code " + connectionResult.getErrorCode());
-        }
+        Log.e(TAG, "Connection to Google Play Services failed");
     }
 
     @Override
     public void onLocationChanged(Location location) {
+        Log.i(TAG, "Location changed");
         handleNewLocation(location);
+    }
+
+    private void handleNewLocation(Location location) {
+        Intent intent = new Intent(LocationService.INTENT_LOCATION);
+        intent.putExtra(LocationService.EXTRA_LAT, location.getLatitude());
+        intent.putExtra(LocationService.EXTRA_LON, location.getLongitude());
+        sendBroadcast(intent);
     }
 }
