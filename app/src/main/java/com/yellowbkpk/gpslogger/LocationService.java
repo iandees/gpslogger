@@ -1,5 +1,7 @@
 package com.yellowbkpk.gpslogger;
 
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.IntentSender;
@@ -18,7 +20,8 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         GoogleApiClient.OnConnectionFailedListener, LocationListener {
 
     private static final String TAG = LocationService.class.getSimpleName();
-    private static final int CONNECTION_FAILURE_RESOLUTION_REQUEST = 5000;
+    private static final int ONGOING_NOTIFICATION_ID = 25;
+
     public static final String EXTRA_LAT = "LAT";
     public static final String EXTRA_LON = "LON";
     public static final String INTENT_LOCATION = "com.yellowbkpk.location_update";
@@ -53,6 +56,19 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         buildGoogleApiClient();
         mGoogleApiClient.connect();
         createLocationRequest();
+
+        buildNotification();
+    }
+
+    private void buildNotification() {
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), 0);
+        Notification notification = new Notification.Builder(this)
+                .setContentTitle(getText(R.string.notification_title))
+                .setContentText(getText(R.string.notification_message))
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentIntent(pendingIntent)
+                .build();
+        startForeground(ONGOING_NOTIFICATION_ID, notification);
     }
 
     protected void startLocationUpdates() {
@@ -69,6 +85,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         Log.i(TAG, "Stopping location updates");
         LocationServices.FusedLocationApi.removeLocationUpdates(
                 mGoogleApiClient, this);
+        stopForeground(true);
     }
 
     private void createLocationRequest() {

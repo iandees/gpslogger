@@ -1,5 +1,6 @@
 package com.yellowbkpk.gpslogger;
 
+import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -55,9 +56,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 lblLocation.invalidate();
             }
         };
-
-        // Build the Google Play Service location client to test if we can use it
-        testForGoogleApiClient();
     }
 
     private void testForGoogleApiClient() {
@@ -70,12 +68,18 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         Log.d(TAG, "Checking for Google API Client");
     }
 
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void togglePeriodicLocationUpdates() {
         if (!mRequestingLocationUpdates) {
-            // Changing the button text
-            btnStartLocationUpdates
-                    .setText(getString(R.string.btn_stop_location_updates));
-
             mRequestingLocationUpdates = true;
 
             // Starting the location updates
@@ -84,10 +88,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             Log.d(TAG, "Periodic location updates started!");
 
         } else {
-            // Changing the button text
-            btnStartLocationUpdates
-                    .setText(getString(R.string.btn_start_location_updates));
-
             mRequestingLocationUpdates = false;
 
             // Stopping the location updates
@@ -95,12 +95,33 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
             Log.d(TAG, "Periodic location updates stopped!");
         }
+
+        updateToggleButtonText();
+    }
+
+    private void updateToggleButtonText() {
+        if (mRequestingLocationUpdates) {
+            btnStartLocationUpdates
+                    .setText(getString(R.string.btn_stop_location_updates));
+        } else {
+            btnStartLocationUpdates
+                    .setText(getString(R.string.btn_start_location_updates));
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+
+        // Start listening for locations again
         registerReceiver(mLocationReceiver, new IntentFilter(LocationService.INTENT_LOCATION));
+
+        // Build the Google Play Service location client to test if we can use it
+        testForGoogleApiClient();
+
+        // Check if the service is already running
+        mRequestingLocationUpdates = isMyServiceRunning(LocationService.class);
+        updateToggleButtonText();
     }
 
     @Override

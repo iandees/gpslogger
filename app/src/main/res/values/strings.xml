@@ -4,4 +4,6 @@
     <string name="btn_get_location">GET MY LOCATION</string>
     <string name="btn_start_location_updates">START LOCATION UPDATES</string>
     <string name="btn_stop_location_updates">STOP LOCATION UPDATES</string>
+    <string name="notification_title">Logging GPS</string>
+    <string name="notification_message">GPS Logger</string>
 </resources>
