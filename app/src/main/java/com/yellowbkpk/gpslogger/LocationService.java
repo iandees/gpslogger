@@ -12,6 +12,8 @@ import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.ActivityRecognition;
+import com.google.android.gms.location.ActivityRecognitionApi;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
@@ -28,6 +30,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 
     private LocationRequest mLocationRequest;
     private GoogleApiClient mGoogleApiClient;
+    private Outputter mWriter;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -53,11 +56,17 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         Log.i(TAG, "onCreate");
         super.onCreate();
 
+        mWriter = new GeoJsonOutputter();
+
         buildGoogleApiClient();
         mGoogleApiClient.connect();
         createLocationRequest();
+        requestActivityRecognitionUpdates();
 
         buildNotification();
+    }
+
+    private void requestActivityRecognitionUpdates() {
     }
 
     private void buildNotification() {
@@ -98,9 +107,9 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 
     private void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
-                .addApi(LocationServices.API)
                 .build();
     }
 
@@ -131,5 +140,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         intent.putExtra(LocationService.EXTRA_LAT, location.getLatitude());
         intent.putExtra(LocationService.EXTRA_LON, location.getLongitude());
         sendBroadcast(intent);
+
+        mWriter.execute(location);
     }
 }
