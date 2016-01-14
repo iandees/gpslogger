@@ -101,7 +101,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         // Create the LocationRequest object
         mLocationRequest = LocationRequest.create()
                 .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
-                .setInterval(10 * 1000)        // 10 seconds, in milliseconds
+                .setInterval(1 * 1000)        // 1 second, in milliseconds
                 .setFastestInterval(1 * 1000); // 1 second, in milliseconds
     }
 
@@ -141,6 +141,6 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         intent.putExtra(LocationService.EXTRA_LON, location.getLongitude());
         sendBroadcast(intent);
 
-        mWriter.execute(location);
+        mWriter.write(location);
     }
 }
