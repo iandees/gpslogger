@@ -9,15 +9,20 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.io.RandomAccessFile;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class GeoJsonOutputter implements Outputter {
     private static final String TAG = GeoJsonOutputter.class.getName();
+    private static final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
     private Executor executor = Executors.newSingleThreadExecutor();
 
     public GeoJsonOutputter() {
+        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
     @Override
@@ -34,9 +39,13 @@ public class GeoJsonOutputter implements Outputter {
 
         @Override
         public void run() {
-            String filename = Environment.getExternalStorageDirectory() + File.separator + "trace.csv";
+            StringBuilder filename = new StringBuilder();
+            filename.append("GPSLogger");
+            filename.append(File.separator);
+            filename.append(DATE_FORMAT.format(new Date()));
+            filename.append(".csv");
             try {
-                File f = new File(filename);
+                File f = new File(Environment.getExternalStorageDirectory(), filename.toString());
                 FileOutputStream fos = new FileOutputStream(f, true);
                 OutputStreamWriter osw = new OutputStreamWriter(fos);
                 StringBuilder line = new StringBuilder();
