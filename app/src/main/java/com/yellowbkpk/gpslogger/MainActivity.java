@@ -26,6 +26,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     private TextView lblLocation;
     private Button btnStartLocationUpdates;
+    private Button btnCreateFenceHere;
     private BroadcastReceiver mLocationReceiver;
     private GoogleApiClient mGoogleApiClient;
 
@@ -36,12 +37,20 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         lblLocation = (TextView) findViewById(R.id.lblLocation);
         btnStartLocationUpdates = (Button) findViewById(R.id.btnLocationUpdates);
+        btnCreateFenceHere = (Button) findViewById(R.id.btnSetFence);
 
         // Toggling the periodic location updates
         btnStartLocationUpdates.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 togglePeriodicLocationUpdates();
+            }
+        });
+
+        btnCreateFenceHere.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
             }
         });
 

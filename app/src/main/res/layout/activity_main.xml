@@ -3,7 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/view_bg"
     android:gravity="center_horizontal"
     android:orientation="vertical"
     tools:context="com.yellowbkpk.gpslogger.MainActivity">
@@ -13,7 +12,6 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="25dp"
         android:text="@string/lbl_you_are_at"
-        android:textColor="@color/white"
         android:textSize="25dp"
         android:textStyle="bold" />
 
@@ -23,7 +21,6 @@
         android:layout_height="wrap_content"
         android:gravity="center_horizontal"
         android:padding="15dp"
-        android:textColor="@color/white"
         android:textSize="16dp" />
 
     <Button
@@ -31,11 +28,21 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="60dp"
-        android:background="@color/btn_bg"
         android:paddingLeft="20dp"
         android:paddingRight="20dp"
         android:text="@string/btn_start_location_updates"
         android:enabled="false"
-        android:textColor="@color/white" />
+        android:textColor="@color/btn_fg" />
+
+    <Button
+        android:id="@+id/btnSetFence"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp"
+        android:text="@string/btn_set_fence"
+        android:enabled="false"
+        android:textColor="@color/btn_fg" />
 
 </LinearLayout>
