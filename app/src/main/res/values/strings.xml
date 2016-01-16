@@ -8,4 +8,7 @@
     <string name="notification_message">GPS Logger</string>
     <string name="stop">Stop</string>
     <string name="btn_set_fence">Create 500 M Fence Here</string>
+    <string name="geofence_transition_entered">Entered</string>
+    <string name="geofence_transition_exited">Exited</string>
+    <string name="unknown_geofence_transition">Unknown transition</string>
 </resources>

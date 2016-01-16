@@ -39,13 +39,16 @@ public class GeoJsonOutputter implements Outputter {
 
         @Override
         public void run() {
-            StringBuilder filename = new StringBuilder();
-            filename.append("GPSLogger");
-            filename.append(File.separator);
-            filename.append(DATE_FORMAT.format(new Date()));
-            filename.append(".csv");
+            File rootDir = new File(Environment.getExternalStorageDirectory(), "GPSLogger");
+            if(rootDir.mkdirs() || rootDir.isDirectory()) {
+                Log.i(TAG, rootDir.getAbsolutePath() + " created");
+            } else {
+                Log.i(TAG, rootDir.getAbsolutePath() + " wasn't created for some reason");
+            }
+
             try {
-                File f = new File(Environment.getExternalStorageDirectory(), filename.toString());
+                File f = new File(rootDir, DATE_FORMAT.format(new Date()) + ".csv");
+                Log.i(TAG, "Using file " + f.getAbsolutePath());
                 FileOutputStream fos = new FileOutputStream(f, true);
                 OutputStreamWriter osw = new OutputStreamWriter(fos);
                 StringBuilder line = new StringBuilder();
@@ -58,7 +61,7 @@ public class GeoJsonOutputter implements Outputter {
                 line.append(this.location.getTime());
                 line.append("\n");
 
-                Log.i(TAG, "Writing a location to the CSV file: " + filename);
+                Log.i(TAG, "Writing a location to the CSV file: " + f.getAbsolutePath());
                 osw.write(line.toString());
 
                 osw.close();
