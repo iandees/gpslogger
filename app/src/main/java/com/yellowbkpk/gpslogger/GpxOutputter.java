@@ -146,14 +146,13 @@ public class GpxOutputter implements Outputter {
     private class StartNewTraceTask implements Runnable {
         @Override
         public void run() {
-
+            mFirstItemInList = true;
         }
     }
 
     private class EndTraceTask implements Runnable {
         @Override
         public void run() {
-
         }
     }
 }

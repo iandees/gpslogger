@@ -3,6 +3,7 @@ package com.yellowbkpk.gpslogger;
 import android.app.IntentService;
 import android.content.Intent;
 import android.content.Context;
+import android.location.Location;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -48,6 +49,15 @@ public class GeofenceTransitionIntentService extends IntentService {
 
             // Send notification and log the transition details.
             Log.i(TAG, geofenceTransitionDetails);
+
+            Intent loggingService = new Intent(this, LocationService.class);
+            if(geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
+                // Entering a geofence, disabling logger
+                stopService(loggingService);
+            } else {
+                // Exiting a geofence, disable logger
+                startService(loggingService);
+            }
         } else {
             // Log the error.
             Log.e(TAG, "Error during transition " + geofenceTransition);
