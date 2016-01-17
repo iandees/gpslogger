@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.graphics.drawable.Icon;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -24,6 +25,8 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     public static final String EXTRA_LAT = "LAT";
     public static final String EXTRA_LON = "LON";
     public static final String INTENT_LOCATION = "com.yellowbkpk.location_update";
+    private static final String KEY_PAUSE_PLAY = "pauseplay";
+    private static final String VALUE_PAUSE = "pause";
 
     private LocationRequest mLocationRequest;
     private GoogleApiClient mGoogleApiClient;
@@ -67,12 +70,19 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     }
 
     private void buildNotification() {
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), 0);
+        PendingIntent contentPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), 0);
+        
+        PendingIntent pausePendingIntent = PendingIntent.getService(this, 0, new Intent(this, LocationService.class), 0);
+        Bundle pauseBundle = new Bundle();
+        pauseBundle.putString(KEY_PAUSE_PLAY, VALUE_PAUSE);
+
         Notification notification = new Notification.Builder(this)
                 .setContentTitle(getText(R.string.notification_title))
                 .setContentText(getText(R.string.notification_message))
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentIntent(pendingIntent)
+                .addAction(R.drawable.common_google_signin_btn_icon_dark, getText(R.string.notif_pause), pausePendingIntent)
+                .addAction(R.drawable.common_plus_signin_btn_icon_dark, getText(R.string.notif_stop), stopPendingIntent)
+                .setContentIntent(contentPendingIntent)
                 .build();
         startForeground(ONGOING_NOTIFICATION_ID, notification);
     }

@@ -11,4 +11,6 @@
     <string name="geofence_transition_entered">Entered</string>
     <string name="geofence_transition_exited">Exited</string>
     <string name="unknown_geofence_transition">Unknown transition</string>
+    <string name="notif_pause">Pause</string>
+    <string name="notif_stop">Stop</string>
 </resources>
