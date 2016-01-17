@@ -27,7 +27,7 @@ public class GpxOutputter implements Outputter {
     private boolean mFirstItemInList = true;
 
     public GpxOutputter() {
-        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+        ISO_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
     @Override
