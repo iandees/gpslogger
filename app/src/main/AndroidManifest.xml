@@ -3,6 +3,7 @@
     package="com.yellowbkpk.gpslogger">
 
     <uses-permission android:name="com.google.android.providers.gsf.permission.READ_GSERVICES" />
+    <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
@@ -31,6 +32,9 @@
             android:process=":location_service" />
         <service
             android:name=".GeofenceTransitionIntentService"
+            android:exported="false" />
+        <service
+            android:name=".ActivityRecognitionIntentService"
             android:exported="false" />
     </application>
 

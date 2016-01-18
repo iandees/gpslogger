@@ -5,7 +5,6 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.drawable.Icon;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -13,6 +12,7 @@ import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
@@ -32,7 +32,9 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     public static final String ACTION_PAUSE = "pause";
     public static final String ACTION_STOP = "stop";
     public static final String ACTION_PLAY = "play";
-    public static final String KEY_FENCES_INSIDE = "inside_fences";
+    public static final String PREFS_FENCES_INSIDE = "inside_fences";
+    public static final String PREFS_ACTIVITY_NAME = "activity_name";
+    public static final String PREFS_ACTIVITY_CONFIDENCE = "activity_confidence";
 
     private LocationRequest mLocationRequest;
     private boolean mCollectingData = false;
@@ -56,6 +58,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         } else if(actionPausePlay == ACTION_PLAY) {
             unpauseDataCollection();
         } else if(actionPausePlay == ACTION_STOP) {
+            stopLocationUpdates();
             stopSelf();
         }
 
@@ -94,7 +97,6 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         buildGoogleApiClient();
         mGoogleApiClient.connect();
         createLocationRequest();
-        requestActivityRecognitionUpdates();
 
         mSharedPreferences = getSharedPreferences(MainActivity.SHARED_PREFERENCES_NAME, MODE_PRIVATE);
 
@@ -102,6 +104,11 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     }
 
     private void requestActivityRecognitionUpdates() {
+        Intent activityIntent = new Intent(this, ActivityRecognitionIntentService.class);
+        PendingIntent activityPendingIntent = PendingIntent.getService(this, 512, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        ActivityRecognition.ActivityRecognitionApi.requestActivityUpdates(
+                mGoogleApiClient, 30000, activityPendingIntent);
+
     }
 
     private void buildNotification() {
@@ -118,7 +125,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         PendingIntent stopPendingIntent = PendingIntent.getService(this, 101, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         String notificationContentText;
-        Set<String> fencesInside = mSharedPreferences.getStringSet(LocationService.KEY_FENCES_INSIDE, null);
+        Set<String> fencesInside = mSharedPreferences.getStringSet(LocationService.PREFS_FENCES_INSIDE, null);
 
         if (mCollectingData) {
             notificationContentText = getString(R.string.notif_collecting_data);
@@ -167,6 +174,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     private void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addApi(LocationServices.API)
+                .addApi(ActivityRecognition.API)
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
                 .build();
@@ -175,6 +183,8 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     @Override
     public void onConnected(Bundle bundle) {
         Log.i(TAG, "Connected to Google Play Services");
+
+        requestActivityRecognitionUpdates();
     }
 
     @Override
@@ -194,11 +204,13 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     }
 
     private void handleNewLocation(Location location) {
+        // Send an intent to the UI
         Intent intent = new Intent(LocationService.INTENT_LOCATION);
         intent.putExtra(LocationService.EXTRA_LAT, location.getLatitude());
         intent.putExtra(LocationService.EXTRA_LON, location.getLongitude());
         sendBroadcast(intent);
 
+        // Write the location to file
         mWriter.writeLocation(location);
     }
 }
