@@ -13,4 +13,7 @@
     <string name="unknown_geofence_transition">Unknown transition</string>
     <string name="notif_pause">Pause</string>
     <string name="notif_stop">Stop</string>
+    <string name="notif_play">Resume</string>
+    <string name="notif_collecting_data">Collecting data</string>
+    <string name="notif_not_collecting">Data collection paused</string>
 </resources>

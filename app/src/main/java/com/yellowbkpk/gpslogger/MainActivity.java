@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final int CONNECTION_FAILURE_RESOLUTION_REQUEST = 5000;
     private static final Map<String, LatLng> FENCES = new HashMap<>();
-    private static final float GEOFENCE_RADIUS_IN_METERS = 30f;
+    private static final float GEOFENCE_RADIUS_IN_METERS = 50f;
     private static final String GEOFENCES_ADDED_KEY = "geofences_added";
     private static final String SHARED_PREFERENCES_NAME = "gpslogger";
 
@@ -60,6 +60,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        startService(new Intent(this, LocationService.class));
 
         lblLocation = (TextView) findViewById(R.id.lblLocation);
         btnStartLocationUpdates = (Button) findViewById(R.id.btnLocationUpdates);
@@ -116,7 +117,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             mRequestingLocationUpdates = true;
 
             // Starting the location updates
-            startService(new Intent(this, LocationService.class));
+            Intent intent = new Intent(this, LocationService.class);
+            intent.setAction(LocationService.ACTION_PLAY);
+            startService(intent);
 
             Log.d(TAG, "Periodic location updates started!");
 
@@ -124,7 +127,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             mRequestingLocationUpdates = false;
 
             // Stopping the location updates
-            stopService(new Intent(this, LocationService.class));
+            Intent intent = new Intent(this, LocationService.class);
+            intent.setAction(LocationService.ACTION_STOP);
+            startService(intent);
 
             Log.d(TAG, "Periodic location updates stopped!");
         }

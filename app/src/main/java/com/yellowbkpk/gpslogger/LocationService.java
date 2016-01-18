@@ -25,10 +25,13 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     public static final String EXTRA_LAT = "LAT";
     public static final String EXTRA_LON = "LON";
     public static final String INTENT_LOCATION = "com.yellowbkpk.location_update";
-    private static final String KEY_PAUSE_PLAY = "pauseplay";
-    private static final String VALUE_PAUSE = "pause";
+    public static final String KEY_PAUSE_PLAY = "pauseplay";
+    public static final String ACTION_PAUSE = "pause";
+    public static final String ACTION_STOP = "stop";
+    public static final String ACTION_PLAY = "play";
 
     private LocationRequest mLocationRequest;
+    private boolean mCollectingData = false;
     private GoogleApiClient mGoogleApiClient;
     private Outputter mWriter;
 
@@ -39,9 +42,33 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.i(TAG, "onStartCommand");
+        Log.i(TAG, "onStartCommand, intent action=" + intent.getAction() + " extras=" + intent.getExtras());
         super.onStartCommand(intent, flags, startId);
+
+        String actionPausePlay = intent.getAction();
+        if(actionPausePlay == ACTION_PAUSE) {
+            pauseDataCollection();
+        } else if(actionPausePlay == ACTION_PLAY) {
+            unpauseDataCollection();
+        } else if(actionPausePlay == ACTION_STOP) {
+            stopSelf();
+        }
+
         return START_STICKY;
+    }
+
+    private void unpauseDataCollection() {
+        mCollectingData = true;
+        startLocationUpdates();
+        mWriter.startNewTrace();
+        buildNotification();
+    }
+
+    private void pauseDataCollection() {
+        mCollectingData = false;
+        stopLocationUpdates();
+        mWriter.endTrace();
+        buildNotification();
     }
 
     @Override
@@ -49,6 +76,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         Log.i(TAG, "onDestroy");
         super.onDestroy();
         stopLocationUpdates();
+        stopForeground(true);
     }
 
     @Override
@@ -66,22 +94,37 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         buildNotification();
     }
 
+
+
     private void requestActivityRecognitionUpdates() {
     }
 
     private void buildNotification() {
         PendingIntent contentPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), 0);
-        
-        PendingIntent pausePendingIntent = PendingIntent.getService(this, 0, new Intent(this, LocationService.class), 0);
-        Bundle pauseBundle = new Bundle();
-        pauseBundle.putString(KEY_PAUSE_PLAY, VALUE_PAUSE);
+
+        Intent pauseIntent = new Intent(this, LocationService.class);
+        pauseIntent.setAction(mCollectingData ? ACTION_PAUSE : ACTION_PLAY);
+        int pausePlayIcon = mCollectingData ? R.drawable.ic_action_pause : R.drawable.ic_action_play;
+        int pausePlayCaption = mCollectingData ? R.string.notif_pause : R.string.notif_play;
+        PendingIntent pausePendingIntent = PendingIntent.getService(this, 100, pauseIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Intent stopIntent = new Intent(this, LocationService.class);
+        stopIntent.setAction(ACTION_STOP);
+        PendingIntent stopPendingIntent = PendingIntent.getService(this, 101, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        int notifString;
+        if(mCollectingData) {
+            notifString = R.string.notif_collecting_data;
+        } else {
+            notifString = R.string.notif_not_collecting;
+        }
 
         Notification notification = new Notification.Builder(this)
                 .setContentTitle(getText(R.string.notification_title))
-                .setContentText(getText(R.string.notification_message))
+                .setContentText(getText(notifString))
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .addAction(R.drawable.common_google_signin_btn_icon_dark, getText(R.string.notif_pause), pausePendingIntent)
-                .addAction(R.drawable.common_plus_signin_btn_icon_dark, getText(R.string.notif_stop), stopPendingIntent)
+                .addAction(pausePlayIcon, getText(pausePlayCaption), pausePendingIntent)
+                .addAction(R.drawable.ic_action_stop, getText(R.string.notif_stop), stopPendingIntent)
                 .setContentIntent(contentPendingIntent)
                 .build();
         startForeground(ONGOING_NOTIFICATION_ID, notification);
@@ -101,7 +144,6 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         Log.i(TAG, "Stopping location updates");
         LocationServices.FusedLocationApi.removeLocationUpdates(
                 mGoogleApiClient, this);
-        stopForeground(true);
     }
 
     private void createLocationRequest() {
@@ -123,7 +165,6 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     @Override
     public void onConnected(Bundle bundle) {
         Log.i(TAG, "Connected to Google Play Services");
-        startLocationUpdates();
     }
 
     @Override

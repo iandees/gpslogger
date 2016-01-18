@@ -50,12 +50,15 @@ public class GeofenceTransitionIntentService extends IntentService {
             // Send notification and log the transition details.
             Log.i(TAG, geofenceTransitionDetails);
 
-            Intent loggingService = new Intent(this, LocationService.class);
             if(geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
                 // Entering a geofence, disabling logger
-                stopService(loggingService);
-            } else {
-                // Exiting a geofence, disable logger
+                Intent loggingService = new Intent(this, LocationService.class);
+                loggingService.setAction(LocationService.ACTION_PAUSE);
+                startService(loggingService);
+            } else if(geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
+                // Exiting a geofence, enable logger
+                Intent loggingService = new Intent(this, LocationService.class);
+                loggingService.setAction(LocationService.ACTION_PLAY);
                 startService(loggingService);
             }
         } else {
