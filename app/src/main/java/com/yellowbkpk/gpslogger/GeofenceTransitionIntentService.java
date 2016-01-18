@@ -3,6 +3,7 @@ package com.yellowbkpk.gpslogger;
 import android.app.IntentService;
 import android.content.Intent;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.location.Location;
 import android.text.TextUtils;
 import android.util.Log;
@@ -11,7 +12,9 @@ import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 
 public class GeofenceTransitionIntentService extends IntentService {
@@ -30,6 +33,9 @@ public class GeofenceTransitionIntentService extends IntentService {
             return;
         }
 
+        SharedPreferences sharedPrefs = getSharedPreferences(MainActivity.SHARED_PREFERENCES_NAME, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPrefs.edit();
+
         // Get the transition type.
         int geofenceTransition = geofencingEvent.getGeofenceTransition();
 
@@ -39,6 +45,10 @@ public class GeofenceTransitionIntentService extends IntentService {
 
             // Get the geofences that were triggered. A single event can trigger multiple geofences.
             List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
+            Set<String> fenceNames = new HashSet<>();
+            for (Geofence fence : triggeringGeofences) {
+                fenceNames.add(fence.getRequestId());
+            }
 
             // Get the transition details as a String.
             String geofenceTransitionDetails = getGeofenceTransitionDetails(
@@ -52,11 +62,21 @@ public class GeofenceTransitionIntentService extends IntentService {
 
             if(geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
                 // Entering a geofence, disabling logger
+                Set<String> fencesWereInside = sharedPrefs.getStringSet(LocationService.KEY_FENCES_INSIDE, new HashSet<String>());
+                fencesWereInside.addAll(fenceNames);
+                editor.putStringSet(LocationService.KEY_FENCES_INSIDE, fencesWereInside);
+                editor.commit();
+
                 Intent loggingService = new Intent(this, LocationService.class);
                 loggingService.setAction(LocationService.ACTION_PAUSE);
                 startService(loggingService);
             } else if(geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
                 // Exiting a geofence, enable logger
+                Set<String> fencesWereInside = sharedPrefs.getStringSet(LocationService.KEY_FENCES_INSIDE, new HashSet<String>());
+                fencesWereInside.removeAll(fenceNames);
+                editor.putStringSet(LocationService.KEY_FENCES_INSIDE, fencesWereInside);
+                editor.commit();
+
                 Intent loggingService = new Intent(this, LocationService.class);
                 loggingService.setAction(LocationService.ACTION_PLAY);
                 startService(loggingService);

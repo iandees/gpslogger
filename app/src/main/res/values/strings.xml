@@ -16,4 +16,5 @@
     <string name="notif_play">Resume</string>
     <string name="notif_collecting_data">Collecting data</string>
     <string name="notif_not_collecting">Data collection paused</string>
+    <string name="notif_in_fence">Not recording because you\'re in the fence \"%s\"</string>
 </resources>

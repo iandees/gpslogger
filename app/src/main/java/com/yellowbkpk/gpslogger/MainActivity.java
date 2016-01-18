@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private static final Map<String, LatLng> FENCES = new HashMap<>();
     private static final float GEOFENCE_RADIUS_IN_METERS = 50f;
     private static final String GEOFENCES_ADDED_KEY = "geofences_added";
-    private static final String SHARED_PREFERENCES_NAME = "gpslogger";
+    public static final String SHARED_PREFERENCES_NAME = "gpslogger";
 
     static {
         FENCES.put("home", new LatLng(37.7689528, -79.4521164));

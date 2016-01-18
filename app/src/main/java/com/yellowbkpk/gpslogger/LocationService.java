@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.drawable.Icon;
 import android.location.Location;
 import android.os.Bundle;
@@ -15,6 +16,8 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+
+import java.util.Set;
 
 public class LocationService extends Service implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, LocationListener {
@@ -29,11 +32,13 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     public static final String ACTION_PAUSE = "pause";
     public static final String ACTION_STOP = "stop";
     public static final String ACTION_PLAY = "play";
+    public static final String KEY_FENCES_INSIDE = "inside_fences";
 
     private LocationRequest mLocationRequest;
     private boolean mCollectingData = false;
     private GoogleApiClient mGoogleApiClient;
     private Outputter mWriter;
+    private SharedPreferences mSharedPreferences;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -91,10 +96,10 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         createLocationRequest();
         requestActivityRecognitionUpdates();
 
+        mSharedPreferences = getSharedPreferences(MainActivity.SHARED_PREFERENCES_NAME, MODE_PRIVATE);
+
         buildNotification();
     }
-
-
 
     private void requestActivityRecognitionUpdates() {
     }
@@ -112,16 +117,21 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         stopIntent.setAction(ACTION_STOP);
         PendingIntent stopPendingIntent = PendingIntent.getService(this, 101, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
-        int notifString;
-        if(mCollectingData) {
-            notifString = R.string.notif_collecting_data;
+        String notificationContentText;
+        Set<String> fencesInside = mSharedPreferences.getStringSet(LocationService.KEY_FENCES_INSIDE, null);
+
+        if (mCollectingData) {
+            notificationContentText = getString(R.string.notif_collecting_data);
         } else {
-            notifString = R.string.notif_not_collecting;
+            notificationContentText = getString(R.string.notif_not_collecting);
+            if (fencesInside != null) {
+                notificationContentText = getString(R.string.notif_in_fence, fencesInside);
+            }
         }
 
         Notification notification = new Notification.Builder(this)
                 .setContentTitle(getText(R.string.notification_title))
-                .setContentText(getText(notifString))
+                .setContentText(notificationContentText)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .addAction(pausePlayIcon, getText(pausePlayCaption), pausePendingIntent)
                 .addAction(R.drawable.ic_action_stop, getText(R.string.notif_stop), stopPendingIntent)
