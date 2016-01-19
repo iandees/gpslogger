@@ -34,14 +34,26 @@ public class ActivityRecognitionIntentService extends IntentService {
                 .apply();
 
         if (confidence >= 75) {
-            if (DetectedActivity.STILL == type) {
-                Intent loggerIntent = new Intent(this, LocationService.class);
-                loggerIntent.setAction(LocationService.ACTION_PAUSE);
-                startService(loggerIntent);
-            } else {
-                Intent loggerIntent = new Intent(this, LocationService.class);
-                loggerIntent.setAction(LocationService.ACTION_PLAY);
-                startService(loggerIntent);
+            switch (type) {
+                case DetectedActivity.STILL: {
+                    Intent loggerIntent = new Intent(this, LocationService.class);
+                    loggerIntent.setAction(LocationService.ACTION_PAUSE);
+                    startService(loggerIntent);
+                    break;
+                }
+                case DetectedActivity.IN_VEHICLE:
+                case DetectedActivity.ON_BICYCLE:
+                case DetectedActivity.ON_FOOT:
+                case DetectedActivity.RUNNING:
+                case DetectedActivity.WALKING: {
+                    Intent loggerIntent = new Intent(this, LocationService.class);
+                    loggerIntent.setAction(LocationService.ACTION_PLAY);
+                    startService(loggerIntent);
+                    break;
+                }
+                case DetectedActivity.TILTING:
+                case DetectedActivity.UNKNOWN:
+                    break;
             }
         }
 

@@ -30,11 +30,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, ResultCallback<Status> {
 
-    private static final String TAG = MainActivity.class.getSimpleName();
+    private static final String TAG = MainActivity.class.getName();
     private static final int CONNECTION_FAILURE_RESOLUTION_REQUEST = 5000;
     private static final Map<String, LatLng> FENCES = new HashMap<>();
     private static final float GEOFENCE_RADIUS_IN_METERS = 50f;

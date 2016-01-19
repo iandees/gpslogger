@@ -22,7 +22,7 @@ import java.util.Set;
 public class LocationService extends Service implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, LocationListener {
 
-    private static final String TAG = LocationService.class.getSimpleName();
+    private static final String TAG = LocationService.class.getName();
     private static final int ONGOING_NOTIFICATION_ID = 25;
 
     public static final String EXTRA_LAT = "LAT";
@@ -168,7 +168,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         mLocationRequest = LocationRequest.create()
                 .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
                 .setInterval(1 * 1000)        // 1 second, in milliseconds
-                .setFastestInterval(1 * 1000); // 1 second, in milliseconds
+                .setFastestInterval(0);
     }
 
     private void buildGoogleApiClient() {
