@@ -33,8 +33,6 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     public static final String ACTION_STOP = "stop";
     public static final String ACTION_PLAY = "play";
     public static final String PREFS_FENCES_INSIDE = "inside_fences";
-    public static final String PREFS_ACTIVITY_NAME = "activity_name";
-    public static final String PREFS_ACTIVITY_CONFIDENCE = "activity_confidence";
 
     private LocationRequest mLocationRequest;
     private boolean mCollectingData = false;
@@ -103,14 +101,6 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         buildNotification();
     }
 
-    private void requestActivityRecognitionUpdates() {
-        Intent activityIntent = new Intent(this, ActivityRecognitionIntentService.class);
-        PendingIntent activityPendingIntent = PendingIntent.getService(this, 512, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        ActivityRecognition.ActivityRecognitionApi.requestActivityUpdates(
-                mGoogleApiClient, 30000, activityPendingIntent);
-
-    }
-
     private void buildNotification() {
         PendingIntent contentPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), 0);
 
@@ -174,7 +164,6 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     private void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addApi(LocationServices.API)
-                .addApi(ActivityRecognition.API)
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
                 .build();
@@ -183,8 +172,6 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     @Override
     public void onConnected(Bundle bundle) {
         Log.i(TAG, "Connected to Google Play Services");
-
-        requestActivityRecognitionUpdates();
     }
 
     @Override
