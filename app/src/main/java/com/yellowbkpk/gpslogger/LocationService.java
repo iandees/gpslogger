@@ -12,7 +12,6 @@ import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
@@ -187,17 +186,23 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     @Override
     public void onLocationChanged(Location location) {
         Log.i(TAG, "Location changed");
-        handleNewLocation(location);
+        sendLocationIntent(location);
+        writeLocation(location);
     }
 
-    private void handleNewLocation(Location location) {
-        // Send an intent to the UI
+    private void sendLocationIntent(Location location) {
         Intent intent = new Intent(LocationService.INTENT_LOCATION);
         intent.putExtra(LocationService.EXTRA_LAT, location.getLatitude());
         intent.putExtra(LocationService.EXTRA_LON, location.getLongitude());
         sendBroadcast(intent);
+    }
 
-        // Write the location to file
-        mWriter.writeLocation(location);
+    private void writeLocation(Location location) {
+        if (location.getAccuracy() < 25.0f) {
+            // Write the location to file
+            mWriter.writeLocation(location);
+        } else {
+            Log.i(TAG, "Skipping inaccurate location (" + location.getAccuracy() + " meters)");
+        }
     }
 }
