@@ -346,6 +346,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     }
 
     public void populateGeofenceList() {
+        mGeofenceList.clear();
         for (Map.Entry<String, LatLng> entry : FENCES.entrySet()) {
 
             mGeofenceList.add(new Geofence.Builder()
