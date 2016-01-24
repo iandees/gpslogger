@@ -32,7 +32,7 @@ public class GeofenceTransitionIntentService extends IntentService {
             return;
         }
 
-        SharedPreferences sharedPrefs = getSharedPreferences(MainActivity.SHARED_PREFERENCES_NAME, MODE_PRIVATE);
+        SharedPreferences sharedPrefs = getSharedPreferences(LocationService.SHARED_PREFERENCES_NAME, MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPrefs.edit();
 
         // Get the transition type.

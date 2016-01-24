@@ -8,36 +8,61 @@ import android.content.SharedPreferences;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.support.annotation.NonNull;
 import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.Geofence;
+import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.model.LatLng;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class LocationService extends Service implements GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener, LocationListener {
+        GoogleApiClient.OnConnectionFailedListener, LocationListener, ResultCallback<Status> {
 
     private static final String TAG = LocationService.class.getName();
     private static final int ONGOING_NOTIFICATION_ID = 25;
+    public static final String SHARED_PREFERENCES_NAME = "gpslogger";
+
+    private static final Map<String, LatLng> FENCES = new HashMap<>();
+    private static final float GEOFENCE_RADIUS_IN_METERS = 50f;
+    private static final String GEOFENCES_ADDED_KEY = "geofences_added";
+
+    static {
+//        FENCES.put("home", new LatLng(37.7689528, -79.4521164));
+    }
 
     public static final String EXTRA_LAT = "LAT";
     public static final String EXTRA_LON = "LON";
     public static final String INTENT_LOCATION = "com.yellowbkpk.location_update";
-    public static final String KEY_PAUSE_PLAY = "pauseplay";
     public static final String ACTION_PAUSE = "pause";
     public static final String ACTION_STOP = "stop";
     public static final String ACTION_PLAY = "play";
+    public static final String ACTION_PAUSE_AND_FENCE = "pause_and_fence";
     public static final String PREFS_FENCES_INSIDE = "inside_fences";
 
     private LocationRequest mLocationRequest;
     private boolean mCollectingData = false;
     private GoogleApiClient mGoogleApiClient;
     private Outputter mWriter;
+    private PendingIntent mGeofencePendingIntent;
+    private List<Geofence> mGeofenceList = new ArrayList<>();
+    private boolean mGeofencesAdded = false;
     private SharedPreferences mSharedPreferences;
+    private ArrayDeque<Float> mPreviousSpeeds = new ArrayDeque<>(15);
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -46,20 +71,49 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.i(TAG, "onStartCommand, intent action=" + intent.getAction() + " extras=" + intent.getExtras());
         super.onStartCommand(intent, flags, startId);
 
-        String actionPausePlay = intent.getAction();
-        if(actionPausePlay == ACTION_PAUSE) {
-            pauseDataCollection();
-        } else if(actionPausePlay == ACTION_PLAY) {
-            unpauseDataCollection();
-        } else if(actionPausePlay == ACTION_STOP) {
-            stopLocationUpdates();
-            stopSelf();
+        if (intent == null) {
+            return START_STICKY;
         }
 
+        Log.i(TAG, "onStartCommand, intent action=" + intent.getAction() + " extras=" + intent.getExtras());
+
+        String actionPausePlay = intent.getAction();
+        if(ACTION_PAUSE.equals(actionPausePlay)) {
+            pauseDataCollection();
+        } else if(ACTION_PLAY.equals(actionPausePlay)) {
+            unpauseDataCollection();
+        } else if(ACTION_STOP.equals(actionPausePlay)) {
+            stopLocationUpdates();
+            stopSelf();
+        } else if(ACTION_PAUSE_AND_FENCE.equals(actionPausePlay)) {
+            pauseDataCollection();
+            double lat = intent.getDoubleExtra(EXTRA_LAT, 0);
+            double lon = intent.getDoubleExtra(EXTRA_LON, 0);
+
+            setupTemporaryFenceAround(new LatLng(lat, lon));
+        }
+
+        mSharedPreferences = getSharedPreferences(SHARED_PREFERENCES_NAME, MODE_PRIVATE);
+        mGeofencesAdded = mSharedPreferences.getBoolean(GEOFENCES_ADDED_KEY, false);
+
+        populateGeofenceList();
+
         return START_STICKY;
+    }
+
+    private void setupTemporaryFenceAround(LatLng location) {
+        Log.i(TAG, "Creating temporary fence around " + location);
+        FENCES.put("temporary", location);
+        populateGeofenceList();
+
+        if (mGoogleApiClient.isConnected()) {
+            // To trigger a call to onConnected(), which re-adds the fences
+            mGoogleApiClient.reconnect();
+        } else {
+            mGoogleApiClient.connect();
+        }
     }
 
     private void unpauseDataCollection() {
@@ -95,7 +149,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         mGoogleApiClient.connect();
         createLocationRequest();
 
-        mSharedPreferences = getSharedPreferences(MainActivity.SHARED_PREFERENCES_NAME, MODE_PRIVATE);
+        mSharedPreferences = getSharedPreferences(SHARED_PREFERENCES_NAME, MODE_PRIVATE);
 
         buildNotification();
     }
@@ -137,19 +191,29 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     }
 
     protected void startLocationUpdates() {
-        if (mGoogleApiClient.isConnected() && mLocationRequest != null) {
+        mCollectingData = true;
+
+        if (mLocationRequest != null) {
+            createLocationRequest();
+        }
+
+        if (mGoogleApiClient.isConnected()) {
             Log.i(TAG, "Requesting location updates");
             LocationServices.FusedLocationApi.requestLocationUpdates(
                     mGoogleApiClient, mLocationRequest, this);
         } else {
-            Log.i(TAG, "No client connected or location request not built yet");
+            Log.i(TAG, "No client connected. Requesting connection.");
+            mGoogleApiClient.connect();
         }
     }
 
     protected void stopLocationUpdates() {
         Log.i(TAG, "Stopping location updates");
-        LocationServices.FusedLocationApi.removeLocationUpdates(
-                mGoogleApiClient, this);
+        mCollectingData = false;
+        if (mGoogleApiClient.isConnected()) {
+            LocationServices.FusedLocationApi.removeLocationUpdates(
+                    mGoogleApiClient, this);
+        }
     }
 
     private void createLocationRequest() {
@@ -171,6 +235,35 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     @Override
     public void onConnected(Bundle bundle) {
         Log.i(TAG, "Connected to Google Play Services");
+
+        if (mLocationRequest == null) {
+            createLocationRequest();
+        }
+
+        if (mCollectingData) {
+            Log.i(TAG, "Should be collecting, so requesting location updates");
+            LocationServices.FusedLocationApi.requestLocationUpdates(
+                    mGoogleApiClient, mLocationRequest, this);
+        } else {
+            Log.i(TAG, "Should NOT be collecting, so removing location updates");
+            LocationServices.FusedLocationApi.removeLocationUpdates(
+                    mGoogleApiClient, this);
+        }
+
+        Log.i(TAG, "Removing geofences");
+        LocationServices.GeofencingApi.removeGeofences(mGoogleApiClient, getGeofencePendingIntent());
+        Log.i(TAG, "Adding " + mGeofenceList.size() + " geofences");
+        if (mGeofenceList.size() > 0) {
+            LocationServices.GeofencingApi.addGeofences(
+                    mGoogleApiClient,
+                    // The GeofenceRequest object.
+                    getGeofencingRequest(),
+                    // A pending intent that that is reused when calling removeGeofences(). This
+                    // pending intent is used to generate an intent when a matched geofence
+                    // transition is observed.
+                    getGeofencePendingIntent()
+            ).setResultCallback(this); // Result processed in onResult().
+        }
     }
 
     @Override
@@ -179,14 +272,32 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     }
 
     @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
         Log.e(TAG, "Connection to Google Play Services failed");
     }
 
     @Override
     public void onLocationChanged(Location location) {
-        Log.i(TAG, "Location changed");
         sendLocationIntent(location);
+
+        mPreviousSpeeds.offerFirst(location.getSpeed());
+        float sum = 0;
+        for (Float speed : mPreviousSpeeds) {
+            sum += speed;
+        }
+        float average = sum / mPreviousSpeeds.size();
+        if (mPreviousSpeeds.size() >= 20) {
+            Log.i(TAG, "Weighted average speed is " + average);
+            mPreviousSpeeds.removeLast();
+            if (average < 1.0f) {
+                startService(new Intent(this, LocationService.class)
+                        .setAction(ACTION_PAUSE_AND_FENCE)
+                        .putExtra(EXTRA_LAT, location.getLatitude())
+                        .putExtra(EXTRA_LON, location.getLongitude())
+                );
+            }
+        }
+
         writeLocation(location);
     }
 
@@ -204,5 +315,76 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         } else {
             Log.i(TAG, "Skipping inaccurate location (" + location.getAccuracy() + " meters)");
         }
+    }
+
+    private PendingIntent getGeofencePendingIntent() {
+        // Reuse the PendingIntent if we already have it.
+        if (mGeofencePendingIntent == null) {
+            Intent intent = new Intent(this, GeofenceTransitionIntentService.class);
+            // We use FLAG_UPDATE_CURRENT so that we get the same pending intent back when
+            // calling addGeofences() and removeGeofences().
+            mGeofencePendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.
+                    FLAG_UPDATE_CURRENT);
+        }
+
+        return mGeofencePendingIntent;
+    }
+
+    private GeofencingRequest getGeofencingRequest() {
+        GeofencingRequest.Builder builder = new GeofencingRequest.Builder();
+
+        // The INITIAL_TRIGGER_ENTER flag indicates that geofencing service should trigger a
+        // GEOFENCE_TRANSITION_ENTER notification when the geofence is added and if the device
+        // is already inside that geofence.
+        builder.setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER);
+
+        // Add the geofences to be monitored by geofencing service.
+        builder.addGeofences(mGeofenceList);
+
+        // Return a GeofencingRequest.
+        return builder.build();
+    }
+
+    public void populateGeofenceList() {
+        for (Map.Entry<String, LatLng> entry : FENCES.entrySet()) {
+
+            mGeofenceList.add(new Geofence.Builder()
+                    // Set the request ID of the geofence. This is a string to identify this
+                    // geofence.
+                    .setRequestId(entry.getKey())
+
+                            // Set the circular region of this geofence.
+                    .setCircularRegion(
+                            entry.getValue().latitude,
+                            entry.getValue().longitude,
+                            GEOFENCE_RADIUS_IN_METERS
+                    )
+
+                    .setExpirationDuration(Geofence.NEVER_EXPIRE)
+
+                            // Set the transition types of interest. Alerts are only generated for these
+                            // transition. We track entry and exit transitions in this sample.
+                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
+                            Geofence.GEOFENCE_TRANSITION_EXIT)
+
+                            // Create the geofence.
+                    .build());
+        }
+    }
+
+    @Override
+    public void onResult(@NonNull Status status) {
+        if (status.isSuccess()) {
+            // Update state and save in shared preferences.
+            mGeofencesAdded = !mGeofencesAdded;
+            SharedPreferences.Editor editor = mSharedPreferences.edit();
+            editor.putBoolean(GEOFENCES_ADDED_KEY, mGeofencesAdded);
+            editor.apply();
+            Log.i(TAG, "Success adding geofences");
+        } else {
+            // Get the status code for the error and log it using a user-friendly message.
+            Log.e(TAG, "Error adding the geofences: " + status.getStatusMessage());
+        }
+        mGoogleApiClient.disconnect();
     }
 }
