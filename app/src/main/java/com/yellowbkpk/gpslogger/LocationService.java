@@ -250,8 +250,6 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
                     mGoogleApiClient, this);
         }
 
-        Log.i(TAG, "Removing geofences");
-        LocationServices.GeofencingApi.removeGeofences(mGoogleApiClient, getGeofencePendingIntent());
         Log.i(TAG, "Adding " + mGeofenceList.size() + " geofences");
         if (mGeofenceList.size() > 0) {
             LocationServices.GeofencingApi.addGeofences(
@@ -286,7 +284,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
             sum += speed;
         }
         float average = sum / mPreviousSpeeds.size();
-        if (mPreviousSpeeds.size() >= 20) {
+        if (mPreviousSpeeds.size() >= 40) {
             Log.i(TAG, "Weighted average speed is " + average);
             mPreviousSpeeds.removeLast();
             if (average < 1.0f) {
@@ -295,6 +293,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
                         .putExtra(EXTRA_LAT, location.getLatitude())
                         .putExtra(EXTRA_LON, location.getLongitude())
                 );
+                mPreviousSpeeds.clear();
             }
         }
 
