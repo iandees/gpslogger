@@ -4,8 +4,7 @@
     <string name="btn_get_location">GET MY LOCATION</string>
     <string name="btn_start_location_updates">START LOCATION UPDATES</string>
     <string name="btn_stop_location_updates">STOP LOCATION UPDATES</string>
-    <string name="notification_title">Logging GPS</string>
-    <string name="notification_message">GPS Logger</string>
+    <string name="notification_title">GPS Logger</string>
     <string name="stop">Stop</string>
     <string name="btn_set_fence">Create 500 M Fence Here</string>
     <string name="geofence_transition_entered">Entered</string>
