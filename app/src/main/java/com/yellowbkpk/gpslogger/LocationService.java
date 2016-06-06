@@ -25,6 +25,7 @@ import com.google.android.gms.maps.model.LatLng;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,8 +61,9 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     private PendingIntent mGeofencePendingIntent;
     private List<Geofence> mGeofenceList = new ArrayList<>();
     private SharedPreferences mSharedPreferences;
-    private ArrayDeque<Float> mPreviousSpeeds = new ArrayDeque<>(15);
+    private ArrayDeque<Location> mPreviousLocations = new ArrayDeque<>(15);
     private boolean mFencesChanged = false;
+    private Location mLastWrittenLocation = null;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -167,7 +169,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
         } else {
             notificationContentText = getString(R.string.notif_not_collecting);
             if (fencesInside != null) {
-                notificationContentText = getString(R.string.notif_in_fence, fencesInside);
+                notificationContentText = getString(R.string.notif_in_fence);
             }
         }
 
@@ -271,28 +273,50 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 
     @Override
     public void onLocationChanged(Location location) {
-        sendLocationIntent(location);
+        Log.d(TAG, "Received location " + location);
 
-        mPreviousSpeeds.offerFirst(location.getSpeed());
-        float sum = 0;
-        for (Float speed : mPreviousSpeeds) {
-            sum += speed;
+        if (location.getAccuracy() > 25.0f) {
+            Log.i(TAG, "Skipping inaccurate location");
+            return;
         }
-        float average = sum / mPreviousSpeeds.size();
-        if (mPreviousSpeeds.size() >= 40) {
-            Log.i(TAG, "Weighted average speed is " + average);
-            mPreviousSpeeds.removeLast();
-            if (average < 1.0f) {
+
+        sendLocationIntent(location);
+        writeLocation(location);
+
+        mPreviousLocations.offerFirst(location);
+
+        // Trim off old locations
+        float speedSum = 0;
+        boolean enoughData = false;
+        final Iterator<Location> iter = mPreviousLocations.descendingIterator();
+        while(iter.hasNext()) {
+            Location loc = iter.next();
+
+            long age = location.getTime() - loc.getTime();
+            if (age > 90000) {
+                iter.remove();
+                Log.i(TAG, "removing a " + age + " sec old location");
+            } else {
+                speedSum += loc.getSpeed();
+            }
+        }
+
+        enoughData = (mPreviousLocations.size() > 80);
+
+        if (enoughData) {
+            float average = speedSum / mPreviousLocations.size();
+            Log.i(TAG, "Average speed is " + average);
+
+            // Stop logging if we haven't moved
+            if (average < 0.8f) {
                 startService(new Intent(this, LocationService.class)
                         .setAction(ACTION_PAUSE_AND_FENCE)
                         .putExtra(EXTRA_LAT, location.getLatitude())
                         .putExtra(EXTRA_LON, location.getLongitude())
                 );
-                mPreviousSpeeds.clear();
+                mPreviousLocations.clear();
             }
         }
-
-        writeLocation(location);
     }
 
     private void sendLocationIntent(Location location) {
@@ -303,11 +327,17 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
     }
 
     private void writeLocation(Location location) {
-        if (location.getAccuracy() < 25.0f) {
-            // Write the location to file
-            mWriter.writeLocation(location);
+        if (mLastWrittenLocation != null) {
+            float distance = mLastWrittenLocation.distanceTo(location);
+            if (distance > 5.0) {
+                // Write the location to file
+                mWriter.writeLocation(location);
+                mLastWrittenLocation = location;
+            } else {
+                Log.i(TAG, "Skipping location because we only moved " + distance + " meters");
+            }
         } else {
-            Log.i(TAG, "Skipping inaccurate location (" + location.getAccuracy() + " meters)");
+            mLastWrittenLocation = location;
         }
     }
 
